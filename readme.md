@@ -36,3 +36,4 @@ After clearing the graphs, you can re-display the experiment data (Graph, Experi
 - [ ] Create class of "lcr-meter" and use it in gui
 - [ ] New branch for async or mp gui
 - [ ] Refac design
+- [ ] Create DB
