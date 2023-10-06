@@ -1,4 +1,3 @@
-import datetime
 import sys
 import re
 import random
@@ -7,18 +6,19 @@ from datetime import datetime
 import csv
 import numpy as np
 import math
-from PyQt6.QtWidgets import QApplication, QWidget, QMainWindow, QGraphicsScene, QVBoxLayout
-from PyQt6.QtWidgets import QComboBox, QLabel
-from PyQt6 import QtSerialPort, QtWidgets
-from GWinstekUi import Ui_MainWindow
+# , QWidget, QGraphicsScene, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow
+# from PyQt6.QtWidgets import QComboBox, QLabel
+# from PyQt6 import QtSerialPort, QtWidgets
+from gui.GWinstekUi import Ui_MainWindow
 
-from pyqtgraph import PlotWidget, plot
-import pyqtgraph as pg
+# from pyqtgraph import PlotWidget, plot
+# import pyqtgraph as pg
 
 import serial
 
 
-def normalValue(value):
+def normalValue(value: str) -> int:
     try:
         pref = re.findall(r'\D', value)[0]
         if pref == ('k' or 'K'):
@@ -35,7 +35,7 @@ def normalValue(value):
     return freq
 
 
-def reInOut(stroka):
+def reInOut(stroka: str):
     print(stroka)
     trueValueR = float(stroka[0:8]) * 10 ** float(stroka[9:12])
     lcdR = stroka[0:12]
@@ -44,7 +44,7 @@ def reInOut(stroka):
     return trueValueR, trueValueX, lcdR, lcdX
 
 
-def randomAnswer(command):
+def randomAnswer(command: str):
     command = command
     print(command)
     a = random.randint(1, 10)
@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
             self.ser = serial.Serial('COM4', 115200)
             command = b'FUNC R-X'
             self.ser.write(command)
-        except:
+        except:  # need add exception
             print(" Не подключен прибор, подключите/включите и перезапустите программу")
 
     def fetch(self):
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
             print(logSteps)
             self.expRX(logSteps)
 
-    def expRX(self, freqSteps):
+    def expRX(self, freqSteps: list[float]):
         command = 'FREQ '
         self.expResultR = []
         self.expResultX = []
@@ -179,12 +179,12 @@ class MainWindow(QMainWindow):
 
         for freq in freqSteps:
             # freq = np.round(freq)
-            TX = command + str(freq)
-            TX = bytes(TX, 'UTF-8')
-            self.ser.write(TX)
+            tx = command + str(freq)
+            tx = bytes(tx, 'UTF-8')
+            self.ser.write(tx)
             time.sleep(10)
-            tryResultX = []
-            tryResultR = []
+            tryResultX: list[float] = []
+            tryResultR: list[float] = []
             Q = 1000
             for tr in range(Q):
                 self.ser.write(b'FETCH?')
