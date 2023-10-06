@@ -29,3 +29,10 @@ Model building in the "Model building" tab. Each new model is built on top of ev
 To clear the chart, click "Clear".
 
 After clearing the graphs, you can re-display the experiment data (Graph, Experiment Progress tab) and model data (Graph, Model Building tab).
+
+### To Do List:
+
+- [ ] Median value of results
+- [ ] Create class of "lcr-meter" and use it in gui
+- [ ] New branch for async or mp gui
+- [ ] Refac design
