@@ -76,7 +76,6 @@ class MainWindow(QMainWindow):
 
         # self.show()
 
-
     # Не используем в этом варианте программы, режим всегда R-X
     """
     def setMode(self):
@@ -92,9 +91,10 @@ class MainWindow(QMainWindow):
 
             # print(self.ser.readline())
     """
+
     def meterConnect(self):
         try:
-            self.ser = serial.Serial('COM4',115200)
+            self.ser = serial.Serial('COM4', 115200)
             command = b'FUNC R-X'
             self.ser.write(command)
         except:
@@ -131,18 +131,22 @@ class MainWindow(QMainWindow):
                 self.modeExp = True
                 self.ui.labelChoosedMode.setText('Mode - Line')
 
-            self.ui.labelFreqStart.setText('Start - ' + str(self.freqStart) + 'Hz')
-            self.ui.labelFreqStop.setText('Stop - ' + str(self.freqStop) + 'Hz')
+            self.ui.labelFreqStart.setText(
+                'Start - ' + str(self.freqStart) + 'Hz')
+            self.ui.labelFreqStop.setText(
+                'Stop - ' + str(self.freqStop) + 'Hz')
             self.ui.labelFreqPoints.setText('Steps - ' + str(self.freqPoints))
 
             if self.modeExp:
-                self.freqSteps = np.linspace(self.freqStart, self.freqStop, self.freqPoints)
+                self.freqSteps = np.linspace(
+                    self.freqStart, self.freqStop, self.freqPoints)
                 print(self.freqSteps)
                 for freq in self.freqSteps:
                     print(freq)
 
             else:
-                self.freqSteps = np.geomspace(self.freqStart, self.freqStop, self.freqPoints)
+                self.freqSteps = np.geomspace(
+                    self.freqStart, self.freqStop, self.freqPoints)
                 print(self.freqSteps)
                 for freq in self.freqSteps:
                     print(freq)
@@ -152,63 +156,117 @@ class MainWindow(QMainWindow):
 
     def startExperiment(self):
         print(self.freqPoints, self.freqStart, self.freqStop, self.modeExp)
-        if self.modeExp:
-            self.expRX()
-        else:
-            self.expRX()
 
-    def expRX(self):
+        points = self.freqPoints
+        freq = self.freqStart
+        stop = self.freqStop
+        mode = self.modeExp
+        if mode:
+            lineSteps = np.linspace(freq, stop, points)
+            print(lineSteps)
+            self.expRX(lineSteps)
+        else:
+            logSteps = np.geomspace(freq, stop, points)
+            print(logSteps)
+            self.expRX(logSteps)
+
+    def expRX(self, freqSteps):
         command = 'FREQ '
         self.expResultR = []
         self.expResultX = []
-        for freq in self.freqSteps:
-            freq = np.round(freq)
+
+        self.freqSteps = []
+
+        for freq in freqSteps:
+            # freq = np.round(freq)
             TX = command + str(freq)
             TX = bytes(TX, 'UTF-8')
             self.ser.write(TX)
-            time.sleep(1)
-            self.ser.write(b'FETCH?')
-            result = reInOut(self.ser.readline())
-            self.expResultX.append(result[0])
-            self.expResultR.append(result[1])
+            time.sleep(10)
+            tryResultX = []
+            tryResultR = []
+            Q = 1000
+            for tr in range(Q):
+                self.ser.write(b'FETCH?')
+
+                text = self.ser.readline()
+                print(text)
+
+                result = reInOut(text)
+                tryResultX.append(result[1])
+                tryResultR.append(result[0])
+
+            resX = sum(tryResultX)/Q
+            resR = sum(tryResultR)/Q
+
+            # self.expResultX.append(result[1])
+            # self.expResultR.append(result[0])
+
+            self.expResultX.append(resX)
+            self.expResultR.append(resR)
+            self.freqSteps.append(freq)
             print(result)
             print(result[0], ' ', result[1], ' ', freq)
         print(self.expResultX)
         print(self.expResultR)
-    
+
     def plotClear(self):
         self.ui.plotWidgetRX.clear()
         self.ui.plotWidgetPowRX.clear()
 
     def plotAE(self):
-        self.powerRX = np.sqrt((np.power(self.expResultR, 2) + np.power(self.expResultX, 2)))
+        self.powerRX = np.sqrt(
+            (np.power(self.expResultR, 2) + np.power(self.expResultX, 2)))
         self.ui.plotWidgetRX.clear()
         self.ui.plotWidgetPowRX.clear()
-        self.resultX = np.absolute(self.randResultX)
-        self.ui.plotWidgetRX.plot(self.expResultR, self.resultX, symbol='o', symbolSize = 14, pen = 'w')
-        self.ui.plotWidgetPowRX.plot(self.freqSteps, self.powerRX, symbol='o', symbolSize = 14, pen = 'w')
+        self.resultX = np.absolute(self.expResultX)
+        # self.resultR = np.absolute(self.expResultR)
+        self.ui.plotWidgetRX.plot(
+            self.expResultR, self.resultX, symbol='o', symbolSize=14, pen='b')
+        self.ui.plotWidgetPowRX.plot(
+            self.freqSteps, self.powerRX, symbol='o', symbolSize=14, pen='b')
+        print("######################")
+        print(self.expResultR, self.resultX)
+        print(self.freqSteps)
+        print(self.powerRX)
+        print("######################")
 
     def plotModel(self):
         r1 = int(self.ui.lineEditR1.text())
         r2 = int(self.ui.lineEditR2.text())
         c = float(self.ui.lineEditC.text())
         self.z1, self.z2 = [], []
-        for step in self.freqSteps:
-            w = 2*math.pi*step
-            self.z1.append(r1 + (r2/(1+(w**2*c**2*r2**2))))
-            self.z2.append((w*c*r2**2)/(1+(w**2*c**2*r2**2)))
 
-        self.powZ = np.sqrt(np.power(self.z1, 2)+np.power(self.z2,2))
-        self.ui.plotWidgetRX.plot(self.z1, self.z2, pen = 'black')
-        self.ui.plotWidgetPowRX.plot(self.freqSteps, self.powZ, pen = 'black')
+        mode = self.modeExp
+
+        if mode:
+            steps = np.linspace(self.freqStart, self.freqStop, self.freqPoints)
+        else:
+            steps = np.geomspace(
+                self.freqStart, self.freqStop, self.freqPoints)
+
+        for step in steps:
+            w = 2 * math.pi * step
+            self.z1.append(r1 + (r2/(1+((w**2)*(c**2)*(r2**2)))))
+            self.z2.append((w*c*(r2**2))/(1+((w**2)*(c**2)*(r2**2))))
+
+        self.powZ = np.sqrt(np.power(self.z1, 2)+np.power(self.z2, 2))
+        self.ui.plotWidgetRX.plot(self.z1, self.z2, pen='black')
+        self.ui.plotWidgetPowRX.plot(self.freqSteps, self.powZ, pen='black')
+        print("######################")
+        print(self.z1, self.z2)
+        print(self.powZ)
+        print("######################")
 
     def saveFile(self):
         today = datetime.now()
-        path = 'results_' + str(today).replace('.','').replace(':','')
+        path = f"results_{str(today).replace('.','').replace(':','')}_{self.freqStart}Hz-{self.freqStop}Hz.csv"
         with open(path, 'w') as f:
             writer = csv.writer(f)
-            for index in range(0, len(self.z1)):
-                row = [self.z1[index], self.z2[index]]
+            for index in range(0, len(self.expResultX)):
+                row = [self.freqSteps[index],
+                       self.expResultR[index], self.resultX[index]]
+                print(row)
                 writer.writerow(row)
 
 
