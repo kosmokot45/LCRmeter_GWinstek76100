@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
     def saveFile(self):
         today = datetime.now()
         path = f"results_{str(today).replace('.','').replace(':','')}_{self.freqStart}Hz-{self.freqStop}Hz.csv"
-        with open(path, 'w') as f:
+        with open(path, 'w', newline='') as f:
             writer = csv.writer(f)
             for index in range(0, len(self.expResultX)):
                 row = [self.freqSteps[index],
