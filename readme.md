@@ -37,3 +37,18 @@ After clearing the graphs, you can re-display the experiment data (Graph, Experi
 - [ ] New branch for async or mp gui
 - [ ] Refac design
 - [ ] Create DB
+
+### Experiments List:
+
+- [ ] Model circuit 
+- [ ] LF analysis, need to understand which is the best way to collect data from lcr-meter (median, mean or smth else)
+- [ ] Amp level (from max 2V to 1V)
+- [ ] What does the measerment speed mode affect?
+- [ ]
+- [ ]
+- [ ]
+- [ ]
+- [ ]
+- [ ]
+- [ ]
+- [ ]
