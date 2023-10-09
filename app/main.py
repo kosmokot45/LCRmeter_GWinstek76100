@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import csv
 import numpy as np
+from numpy import median
 import math
 # , QWidget, QGraphicsScene, QVBoxLayout
 from PyQt6.QtWidgets import QApplication, QMainWindow
@@ -44,7 +45,7 @@ def reInOut(stroka: str):
     return trueValueR, trueValueX, lcdR, lcdX
 
 
-def randomAnswer(command: str):
+def randomAnswer(command: str) -> list[int]:
     command = command
     print(command)
     a = random.randint(1, 10)
@@ -182,11 +183,24 @@ class MainWindow(QMainWindow):
             tx = command + str(freq)
             tx = bytes(tx, 'UTF-8')
             self.ser.write(tx)
-            time.sleep(10)
+            # pause = pause_steps[freqSteps.index(freq)]
+            # pause = pause_steps[np.where(freqSteps==freq)[0][0]]
+            if freq < 20:
+                pause = 20
+            elif freq < 100:
+                pause = 10
+            elif freq < 500:
+                pause = 5
+            else:
+                pause = 0.3
+            print(pause, freq)
+            time.sleep(pause)
             tryResultX: list[float] = []
             tryResultR: list[float] = []
-            Q = 1000
+            Q = 5
             for tr in range(Q):
+
+                time.sleep(0.10)
                 self.ser.write(b'FETCH?')
 
                 text = self.ser.readline()
@@ -196,8 +210,15 @@ class MainWindow(QMainWindow):
                 tryResultX.append(result[1])
                 tryResultR.append(result[0])
 
-            resX = sum(tryResultX)/Q
-            resR = sum(tryResultR)/Q
+            # resX = sum(tryResultX)/Q
+            # resR = sum(tryResultR)/Q
+            resX = median(tryResultX)
+            resR = median(tryResultR)
+            print("###############")
+            print("Findings of median")
+            print(
+                f"Median of R list - {tryResultR} = {resX}, of X list - {tryResultX} = {resX}")
+            print("###############")
 
             # self.expResultX.append(result[1])
             # self.expResultR.append(result[0])
@@ -260,12 +281,12 @@ class MainWindow(QMainWindow):
 
     def saveFile(self):
         today = datetime.now()
-        path = f"results_{str(today).replace('.','').replace(':','')}_{self.freqStart}Hz-{self.freqStop}Hz.csv"
+        path = f"results//results_{str(today).replace('.','').replace(':','')}{self.freqStart}Hz-{self.freqStop}Hz.csv"
         with open(path, 'w', newline='') as f:
             writer = csv.writer(f)
             for index in range(0, len(self.expResultX)):
                 row = [self.freqSteps[index],
-                       self.expResultR[index], self.resultX[index]]
+                       self.expResultR[index], self.expResultX[index]]
                 print(row)
                 writer.writerow(row)
 
