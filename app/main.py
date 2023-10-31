@@ -2,6 +2,7 @@ import sys
 import re
 import random
 import time
+import json
 from datetime import datetime
 import csv
 import numpy as np
@@ -17,6 +18,7 @@ from gui.GWinstekUi import Ui_MainWindow
 # import pyqtgraph as pg
 
 import serial
+from app.lcrmeter.tools.auto_experiments.auto_experiments import autotest_each_freqs
 
 
 def normalValue(value: str) -> int:
@@ -37,7 +39,7 @@ def normalValue(value: str) -> int:
 
 
 def reInOut(stroka: str):
-    print(stroka)
+    # print(stroka)
     trueValueR = float(stroka[0:8]) * 10 ** float(stroka[9:12])
     lcdR = stroka[0:12]
     trueValueX = float(stroka[13:21]) * 10 ** float(stroka[22:25])
@@ -45,7 +47,7 @@ def reInOut(stroka: str):
     return trueValueR, trueValueX, lcdR, lcdX
 
 
-def randomAnswer(command: str) -> list[int]:
+def randomAnswer(command: str):
     command = command
     print(command)
     a = random.randint(1, 10)
@@ -60,6 +62,7 @@ class MainWindow(QMainWindow):
 
         self.modeExp = None
         self.freqStop, self.freqStart, self.freqPoints, self.freqSteps = None, None, None, None
+        self.level = None
         self.lineSteps, self.logSteps = None, None
         self.z1, self.z2 = None, None
         self.ui = Ui_MainWindow()
@@ -74,6 +77,7 @@ class MainWindow(QMainWindow):
         self.ui.btnSave.clicked.connect(self.saveFile)
         self.ui.btnPlotModel.clicked.connect(self.plotModel)
         self.ui.btnClear.clicked.connect(self.plotClear)
+        self.ui.btnTest1.clicked.connect(self.autotest_each_freqs)
 
         # self.show()
 
@@ -120,7 +124,8 @@ class MainWindow(QMainWindow):
             self.freqStart = normalValue(self.ui.lineEditStartFreq.text())
             self.freqStop = normalValue(self.ui.lineEditStopFreq.text())
             self.freqPoints = normalValue(self.ui.lineEditPointsFreq.text())
-            print(self.freqStart, self.freqStop, self.freqPoints)
+            self.level = self.ui.lineEditPointsFreq_2.text()
+            print(self.freqStart, self.freqStop, self.freqPoints, self.level)
 
             if self.ui.radioLine.isChecked():
                 self.modeExp = True
@@ -162,22 +167,38 @@ class MainWindow(QMainWindow):
         freq = self.freqStart
         stop = self.freqStop
         mode = self.modeExp
+        level = self.level
         if mode:
             lineSteps = np.linspace(freq, stop, points)
             print(lineSteps)
-            self.expRX(lineSteps)
+            self.expRX(level, lineSteps)
         else:
             logSteps = np.geomspace(freq, stop, points)
             print(logSteps)
-            self.expRX(logSteps)
+            self.expRX(level, logSteps)
 
-    def expRX(self, freqSteps: list[float]):
+    def expRX(self, level, freqSteps: list[float]):
+        level_command = 'VOLT ' + str(level)
+        txx = bytes(level_command, 'UTF-8')
+        self.ser.write(txx)
         command = 'FREQ '
         self.expResultR = []
         self.expResultX = []
 
         self.freqSteps = []
+        # l_freq = len(self.freqSteps)
+        # pause_steps = []
+        # for el in self.freqSteps:
+        #     if el < 100:
+        #         pause_steps.append(20)
+        #     elif el < 100:
+        #         pause_steps.append(10)
+        #     else:
+        #         pause_steps.append(2)
 
+        # print(len(self.freqSteps), len(pause_steps))
+
+        # for freq, pause in zip(freqSteps, pause_steps):
         for freq in freqSteps:
             # freq = np.round(freq)
             tx = command + str(freq)
@@ -289,6 +310,42 @@ class MainWindow(QMainWindow):
                        self.expResultR[index], self.expResultX[index]]
                 print(row)
                 writer.writerow(row)
+
+    # def autotest_each_freqs(self):
+    #     result_dict = {}
+    #     freqs = [10, 100000, 50]
+    #     level = 1
+    #     logSteps = np.geomspace(freqs[0], freqs[1], freqs[2])
+    #     for freq in logSteps:
+    #         tryResultX: list[float] = []
+    #         tryResultR: list[float] = []
+    #         for step in range(2):
+    #             command = 'FREQ '
+    #             self.expResultR = []
+    #             self.expResultX = []
+    #             self.freqSteps = []
+
+    #             tx = command + str(freq)
+    #             tx = bytes(tx, 'UTF-8')
+    #             self.ser.write(tx)
+
+    #             time.sleep(0.5)
+
+    #             self.ser.write(b'FETCH?')
+
+    #             text = self.ser.readline()
+    #             # print(text)
+
+    #             result = reInOut(text)
+    #             tryResultX.append(result[1])
+    #             tryResultR.append(result[0])
+    #         result_dict[f'{str(freq)}'] = {
+    #             'X': tryResultX,
+    #             'R': tryResultR,
+    #         }
+
+    #     with open('result.json', 'w') as fp:
+    #         json.dump(result_dict, fp)
 
 
 def main():
