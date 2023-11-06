@@ -1,6 +1,0 @@
-def write_to_csv():
-    ...
-
-
-def write_to_json(data_dict: dict):
-    ...
