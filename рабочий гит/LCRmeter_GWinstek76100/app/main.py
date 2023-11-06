@@ -1,16 +1,69 @@
-import csv
-from datetime import datetime
 import sys
+import re
+import random
 import time
-
+import json
+from datetime import datetime
+import csv
 import numpy as np
 from numpy import median
-from PyQt6.QtWidgets import QApplication, QMainWindow
-import serial
+import math
+# , QWidget, QGraphicsScene, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget
+# from PyQt6.QtWidgets import QComboBox, QLabel
+# from PyQt6 import QtSerialPort, QtWidgets
+from gui_v2.GWinstekUi import Ui_MainWindow
+from gui_v2.GWinstekUi_plot import Ui_Form
 
-from gui.GWinstek import Ui_MainWindow
-from models import randles, voit
-from tools import main_utils as utils
+# from pyqtgraph import PlotWidget, plot
+# import pyqtgraph as pg
+
+import serial
+# from app.lcrmeter.tools.auto_experiments.auto_experiments import autotest_each_freqs
+
+
+def normalValue(value: str) -> int:
+    try:
+        pref = re.findall(r'\D', value)[0]
+        if pref == ('k' or 'K'):
+            pref = 1000
+        elif pref == 'M':
+            pref = 1000000
+        else:
+            pref = 1
+    except:
+        pref = 1
+
+    freq = int(re.findall(r'\d+', value)[0]) * pref
+
+    return freq
+
+
+def reInOut(stroka: str):
+    # print(stroka)
+    trueValueR = float(stroka[0:8]) * 10 ** float(stroka[9:12])
+    lcdR = stroka[0:12]
+    trueValueX = float(stroka[13:21]) * 10 ** float(stroka[22:25])
+    lcdX = stroka[13:25]
+    return trueValueR, trueValueX, lcdR, lcdX
+
+
+def randomAnswer(command: str):
+    command = command
+    print(command)
+    a = random.randint(1, 10)
+    b = random.randint(1, 10)
+    randOut = [a, b]
+    return randOut
+
+
+
+class SubWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.ui = Ui_Form()
+
 
 
 class MainWindow(QMainWindow):
@@ -18,27 +71,22 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.modeExp = None
-        self.freqStop = None
-        self.freqStart = None
-        self.freqPoints = None
-        self.freqSteps = None
+        self.freqStop, self.freqStart, self.freqPoints, self.freqSteps = None, None, None, None
         self.level = None
-        self.lineSteps = None
-        self.logSteps = None
+        self.lineSteps, self.logSteps = None, None
         self.z1, self.z2 = None, None
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.ui.plotWidgetRX.setBackground('w')
-        self.ui.plotWidgetPowRX.setBackground('w')
+        # self.ui.plotWidgetRX.setBackground('w')
+        # self.ui.plotWidgetPowRX.setBackground('w')
         self.ui.btnFetch.clicked.connect(self.fetch)
         self.ui.btnConnect.clicked.connect(self.meterConnect)
         self.ui.btnApply.clicked.connect(self.setupExpParam)
         self.ui.btnStart.clicked.connect(self.startExperiment)
         self.ui.btnPlot.clicked.connect(self.plotAE)
         self.ui.btnSave.clicked.connect(self.saveFile)
-        self.ui.btnPlotModel.clicked.connect(self.plotModels)
-        # self.ui.btnPlotModel.clicked.connect(self.plotModelRandls)
+        self.ui.btnPlotModel.clicked.connect(self.plotModelRandls)
         self.ui.btnClear.clicked.connect(self.plotClear)
         # self.ui.btnTest1.clicked.connect(self.autotest_each_freqs)
 
@@ -84,17 +132,11 @@ class MainWindow(QMainWindow):
 
     def setupExpParam(self):
         try:
-            self.freqStart = utils.normalValue(
-                self.ui.lineEditStartFreq.text())
-
-            self.freqStop = utils.normalValue(self.ui.lineEditStopFreq.text())
-
-            self.freqPoints = utils.normalValue(
-                self.ui.lineEditPointsFreq.text())
-
+            self.freqStart = normalValue(self.ui.lineEditStartFreq.text())
+            self.freqStop = normalValue(self.ui.lineEditStopFreq.text())
+            self.freqPoints = normalValue(self.ui.lineEditPointsFreq.text())
             self.level = self.ui.lineEditPointsLevel.text()
-
-            # print(self.freqStart, self.freqStop, self.freqPoints, self.level)
+            print(self.freqStart, self.freqStop, self.freqPoints, self.level)
 
             if self.ui.radioLine.isChecked():
                 self.modeExp = True
@@ -115,16 +157,16 @@ class MainWindow(QMainWindow):
             if self.modeExp:
                 self.freqSteps = np.linspace(
                     self.freqStart, self.freqStop, self.freqPoints)
-                # print(self.freqSteps)
-                # for freq in self.freqSteps:
-                #     print(freq)
+                print(self.freqSteps)
+                for freq in self.freqSteps:
+                    print(freq)
 
             else:
                 self.freqSteps = np.geomspace(
                     self.freqStart, self.freqStop, self.freqPoints)
-                # print(self.freqSteps)
-                # for freq in self.freqSteps:
-                #     print(freq)
+                print(self.freqSteps)
+                for freq in self.freqSteps:
+                    print(freq)
 
         except IndexError:
             print('Invalid parameters')
@@ -139,11 +181,11 @@ class MainWindow(QMainWindow):
         level = self.level
         if mode:
             lineSteps = np.linspace(freq, stop, points)
-            # print(lineSteps)
+            print(lineSteps)
             self.expRX(level, lineSteps)
         else:
             logSteps = np.geomspace(freq, stop, points)
-            # print(logSteps)
+            print(logSteps)
             self.expRX(level, logSteps)
 
     def expRX(self, level, freqSteps: list[float]):
@@ -183,7 +225,7 @@ class MainWindow(QMainWindow):
                 pause = 5
             else:
                 pause = 0.3
-            # print(pause, freq)
+            print(pause, freq)
             time.sleep(pause)
             tryResultX: list[float] = []
             tryResultR: list[float] = []
@@ -194,9 +236,9 @@ class MainWindow(QMainWindow):
                 self.ser.write(b'FETCH?')
 
                 text = self.ser.readline()
-                # print(text)
+                print(text)
 
-                result = utils.reInOut(text)
+                result = reInOut(text)
                 tryResultX.append(result[1])
                 tryResultR.append(result[0])
 
@@ -204,11 +246,11 @@ class MainWindow(QMainWindow):
             # resR = sum(tryResultR)/Q
             resX = median(tryResultX)
             resR = median(tryResultR)
-            # print("###############")
-            # print("Findings of median")
-            # print(
-            #     f"Median of R list - {tryResultR} = {resX}, of X list - {tryResultX} = {resX}")
-            # print("###############")
+            print("###############")
+            print("Findings of median")
+            print(
+                f"Median of R list - {tryResultR} = {resX}, of X list - {tryResultX} = {resX}")
+            print("###############")
 
             # self.expResultX.append(result[1])
             # self.expResultR.append(result[0])
@@ -216,8 +258,8 @@ class MainWindow(QMainWindow):
             self.expResultX.append(resX)
             self.expResultR.append(resR)
             self.freqSteps.append(freq)
-            # print(result)
-            # print(result[0], ' ', result[1], ' ', freq)
+            print(result)
+            print(result[0], ' ', result[1], ' ', freq)
         print(self.expResultX)
         print(self.expResultR)
 
@@ -236,38 +278,38 @@ class MainWindow(QMainWindow):
             self.expResultR, self.resultX, symbol='o', symbolSize=14, pen='b')
         self.ui.plotWidgetPowRX.plot(
             self.freqSteps, self.powerRX, symbol='o', symbolSize=14, pen='b')
-        # print("######################")
-        # print(self.expResultR, self.resultX)
-        # print(self.freqSteps)
-        # print(self.powerRX)
-        # print("######################")
+        print("######################")
+        print(self.expResultR, self.resultX)
+        print(self.freqSteps)
+        print(self.powerRX)
+        print("######################")
 
-    def plotModels(self):
-        index = self.ui.stackedWidget_3.currentIndex()
-        # print(self.ui.stackedWidget_3.currentIndex())
+    def plotModelRandls(self):
+        r1 = int(self.ui.lineEditModelRandR1.text())
+        r2 = int(self.ui.lineEditModelRandR2.text())
+        c = float(self.ui.lineEditModelRandC.text())
+        self.z1, self.z2 = [], []
 
-        if self.modeExp:
+        mode = self.modeExp
+
+        if mode:
             steps = np.linspace(self.freqStart, self.freqStop, self.freqPoints)
         else:
             steps = np.geomspace(
                 self.freqStart, self.freqStop, self.freqPoints)
 
-        match index:
-            case 0:
-                r1 = int(self.ui.lineEditModelRandR1.text())
-                r2 = int(self.ui.lineEditModelRandR2.text())
-                c = float(self.ui.lineEditModelRandC.text())
-                result = randles.plotModelRandls(r1, r2, c, steps)
+        for step in steps:
+            w = 2 * math.pi * step
+            self.z1.append(r1 + (r2/(1+((w**2)*(c**2)*(r2**2)))))
+            self.z2.append((w*c*(r2**2))/(1+((w**2)*(c**2)*(r2**2))))
 
-            case 1:
-                r1 = int(self.ui.lineEditModelRandR1.text())
-                r2 = int(self.ui.lineEditModelRandR2.text())
-                c1 = float(self.ui.lineEditModelRandC.text())
-                c2 = float(self.ui.lineEditModelRandC.text())
-                result = voit.plotModelVoit(r1, r2, c, steps)
-
-        self.ui.plotWidgetRX.plot(result['z1'], result['z2'], pen='black')
-        self.ui.plotWidgetPowRX.plot(steps, result['powZ'], pen='black')
+        self.powZ = np.sqrt(np.power(self.z1, 2)+np.power(self.z2, 2))
+        self.ui.plotWidgetRX.plot(self.z1, self.z2, pen='black')
+        self.ui.plotWidgetPowRX.plot(self.freqSteps, self.powZ, pen='black')
+        print("######################")
+        print(self.z1, self.z2)
+        print(self.powZ)
+        print("######################")
 
     def saveFile(self):
         today = datetime.now()
@@ -277,8 +319,44 @@ class MainWindow(QMainWindow):
             for index in range(0, len(self.expResultX)):
                 row = [self.freqSteps[index],
                        self.expResultR[index], self.expResultX[index]]
-                # print(row)
+                print(row)
                 writer.writerow(row)
+
+    # def autotest_each_freqs(self):
+    #     result_dict = {}
+    #     freqs = [10, 100000, 50]
+    #     level = 1
+    #     logSteps = np.geomspace(freqs[0], freqs[1], freqs[2])
+    #     for freq in logSteps:
+    #         tryResultX: list[float] = []
+    #         tryResultR: list[float] = []
+    #         for step in range(2):
+    #             command = 'FREQ '
+    #             self.expResultR = []
+    #             self.expResultX = []
+    #             self.freqSteps = []
+
+    #             tx = command + str(freq)
+    #             tx = bytes(tx, 'UTF-8')
+    #             self.ser.write(tx)
+
+    #             time.sleep(0.5)
+
+    #             self.ser.write(b'FETCH?')
+
+    #             text = self.ser.readline()
+    #             # print(text)
+
+    #             result = reInOut(text)
+    #             tryResultX.append(result[1])
+    #             tryResultR.append(result[0])
+    #         result_dict[f'{str(freq)}'] = {
+    #             'X': tryResultX,
+    #             'R': tryResultR,
+    #         }
+
+    #     with open('result.json', 'w') as fp:
+    #         json.dump(result_dict, fp)
 
 
 def main():

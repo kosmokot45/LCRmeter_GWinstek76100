@@ -1,0 +1,1 @@
+pyuic6 -o GWinstekUi.py GWinstek.ui
